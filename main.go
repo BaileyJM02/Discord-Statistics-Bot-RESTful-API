@@ -24,3 +24,6 @@ func main() {
 	fmt.Printf("API is now running with %v/%v endpoints.", len(rh.Routes), rh.TotalRoutes)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", "8000"), router))
 }
+
+//test
+// test 2
