@@ -3,6 +3,7 @@ package routes
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	dbh "github.com/BaileyJM02/Hue-API/pkg/databaseHandler"
 	rh "github.com/BaileyJM02/Hue-API/pkg/routeHandler"
@@ -11,13 +12,8 @@ import (
 
 func runGetPerson(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	for _, item := range dbh.People {
-		if item.ID == params["id"] {
-			json.NewEncoder(w).Encode(item)
-			return
-		}
-	}
-	json.NewEncoder(w).Encode(&dbh.Person{})
+	val, _ := strconv.Atoi(params["id"])
+	json.NewEncoder(w).Encode(dbh.GetPerson(val))
 }
 
 func init() {
