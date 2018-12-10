@@ -3,31 +3,29 @@ package routes
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	dbh "github.com/BaileyJM02/Hue-API/pkg/databaseHandler"
 	rh "github.com/BaileyJM02/Hue-API/pkg/routeHandler"
 	"github.com/gorilla/mux"
 )
 
-func runGetPerson(w http.ResponseWriter, r *http.Request) {
+func runGetMember(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	val, _ := strconv.Atoi(params["id"])
-	json.NewEncoder(w).Encode(dbh.GetPerson(val))
+	json.NewEncoder(w).Encode(dbh.GetMember(params["id"], params["mid"]))
 }
 
 func init() {
-	getPerson := rh.Route{
-		"d",
+	getMember := rh.Route{
+		"getMember",
 		"/db/people",
 		"Shhhh",
 		"Database",
 		"GET",
-		"/db/people/{id}",
+		"/db/guild/{id}/member/{mid}",
 		true,
 		true,
-		runGetPerson,
+		runGetMember,
 	}
 
-	rh.Register(getPerson)
+	rh.Register(getMember)
 }

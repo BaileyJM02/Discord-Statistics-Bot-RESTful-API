@@ -2,10 +2,12 @@ package databaseHandler
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/asdine/storm"
 	"github.com/bwmarrin/discordgo"
+	"mvdan.cc/xurls"
 )
 
 type MessageAttachment struct {
@@ -46,28 +48,31 @@ type Message struct {
 }
 
 type Member struct {
-	GuildID  string    // The guild ID on which the member exists.
-	JoinedAt time.Time `storm:"inline"` // The time at which the member joined the guild
-	Nick     string    // The nickname of the member, if they have one.
-	User     *User     `storm:"inline"` // The underlying user on which the member is based.
-	Roles    []string  // A list of IDs of the roles which are possessed by the member.
+	GuildID         string    // The guild ID on which the member exists.
+	JoinedAt        time.Time `storm:"inline"` // The time at which the member joined the guild
+	Nick            string    // The nickname of the member, if they have one.
+	User            *User     `storm:"inline"` // The underlying user on which the member is based.
+	Roles           []string  // A list of IDs of the roles which are possessed by the member.
+	MessagesSent    int       // Number of messages the user has sent
+	AttachmentsSent int       // Number of attachments the user has sent
+	LinksSent       int       // Number of messages the user has sent
+
 }
 type GuildData struct {
 	DataMessages map[string]Message `storm:"inline"`
 	Members      map[string]Member  `storm:"inline"`
 }
 type GuildStats struct {
-	TotalMessages int // Messages all time
-	MessagesTD    int // Messages this day (last 24h)
-	MessagesTM    int // Messages this month (last 30 days)
-	MessagesTH    int // Messages this hour (last 60 minutes)
-	MessagesTm    int // Messages this minute (last 60 seconds)
-
-	TotalMembers int // Members all time
-	MembersTD    int // Members this day (last 24h)
-	MembersTM    int // Members this month (last 30 days)
-	MembersTH    int // Members this hour (last 60 minutes)
-	MembersTm    int // Members this minute (last 60 seconds)
+	TotalMessages interface{} // Messages all time
+	MessagesTM    interface{} // Messages this month (last 30 days)
+	MessagesTD    interface{} // Messages this day (last 24h)
+	MessagesTH    interface{} // Messages this hour (last 60 minutes)
+	MessagesTm    interface{} // Messages this minute (last 60 seconds)
+	TotalMembers  int         // Members all time
+	MembersTM     interface{} // Members this month (last 30 days)
+	MembersTD     interface{} // Members this day (last 24h)
+	MembersTH     interface{} // Members this hour (last 60 minutes)
+	MembersTm     interface{} // Members this minute (last 60 seconds)
 }
 type Guild struct {
 	ID    string     `storm:"unique"` // Guild ID
@@ -81,53 +86,38 @@ var (
 )
 
 func init() {
-	db, err = storm.Open("database.db")
+	db, err = storm.Open("database-alpha.db")
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	addUser(db)
-	fmt.Println("Added user")
+	db.Init(&Guild{})
 
 	//defer db.Close()
 }
 
-func addUser(db *storm.DB) {
-	user := User{
-		ID:        1,
-		Group:     "staff",
-		Email:     "bailey@provider.com",
-		Name:      "bailey",
-		Age:       16,
-		CreatedAt: time.Now(),
-	}
-
-	err = db.Save(&user)
+func GetGuilds() []Guild {
+	var guilds []Guild
+	err = db.All(&guilds)
 	if err != nil {
 		fmt.Println(err)
 	}
-	// err == nil
+	return guilds
 }
 
-func GetGuilds() []User {
-	var users []User
-	err = db.All(&users)
-	return users
-}
-
-func GetPerson(id int) User {
-	var user User
-	err = db.One("ID", id, &user)
+func GetGuild(id string) Guild {
+	var guild Guild
+	err = db.One("ID", id, &guild)
 	if err != nil {
 		fmt.Println(err)
 	}
-	return user
+	return guild
 }
 
-func addGuild(g *discordgo.GuildCreate) error {
+// Add guild to database
+func AddGuild(g *discordgo.Guild) error {
 	DataMessages := make(map[string]Message)
 	Members := make(map[string]Member)
-
+	fmt.Printf("\nMEMBERS: %v\n", g.Members)
 	for _, member := range g.Members {
 		JoinedAt, _ := member.JoinedAt.Parse()
 		Members[member.User.ID] = Member{
@@ -145,6 +135,9 @@ func addGuild(g *discordgo.GuildCreate) error {
 				member.User.Bot,
 			},
 			member.Roles, // A list of IDs of the roles which are possessed by the member.
+			0,
+			0,
+			0,
 		}
 	}
 
@@ -154,17 +147,101 @@ func addGuild(g *discordgo.GuildCreate) error {
 	}
 
 	guildStats := GuildStats{
-		0, // Messages all time
-		0, // Messages this day (last 24h)
-		0, // Messages this month (last 30 days)
-		0, // Messages this hour (last 60 minutes)
-		0, // Messages this minute (last 60 seconds)
+		func(g *Guild) int { // Messages all time
+			var total int
+			total = len(g.Data.DataMessages)
+			return total
+		},
+		func(g *Guild) int { // Messages this month (last 30 days)
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.DataMessages {
+				cutoff := v.CreatedTime.Add(time.Duration(720 * time.Hour))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
+		func(g *Guild) int { // Messages this day (last 24 hours)
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.DataMessages {
+				cutoff := v.CreatedTime.Add(time.Duration(24 * time.Hour))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
+		func(g *Guild) int { // Messages this hour
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.DataMessages {
+				cutoff := v.CreatedTime.Add(time.Duration(1 * time.Hour))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
+		func(g *Guild) int { // Messages this minute
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.DataMessages {
+				cutoff := v.CreatedTime.Add(time.Duration(1 * time.Minute))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
 
 		g.MemberCount, // Members all time
-		0,             // Members this day (last 24h)
-		0,             // Members this month (last 30 days)
-		0,             // Members this hour (last 60 minutes)
-		0,             // Members this minute (last 60 seconds)
+		func(g *Guild) int { // Members this month (last 30 days)
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.Members {
+				cutoff := v.JoinedAt.Add(time.Duration(720 * time.Hour))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
+		func(g *Guild) int { // Members this day (last 24 hours)
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.Members {
+				cutoff := v.JoinedAt.Add(time.Duration(24 * time.Hour))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
+		func(g *Guild) int { // Members this hour
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.Members {
+				cutoff := v.JoinedAt.Add(time.Duration(1 * time.Hour))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
+		func(g *Guild) int { // Members this minute
+			var total int
+			now := time.Now()
+			for _, v := range g.Data.Members {
+				cutoff := v.JoinedAt.Add(time.Duration(1 * time.Minute))
+				if now.Before(cutoff) {
+					total++
+				}
+			}
+			return total
+		},
 	}
 
 	guild := Guild{
@@ -181,10 +258,265 @@ func addGuild(g *discordgo.GuildCreate) error {
 	return nil
 }
 
-func GuildLeave(g *discordgo.GuildDelete) error {
-	err := deleteGuild(g.ID)
+// RemoveGuild removes a guild from the database
+func RemoveGuild(id string) error {
+	var guild Guild
+	err := db.One("ID", id, &guild)
 	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	err = db.DeleteStruct(&guild)
+	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	return nil
+}
+
+func GetMessages(guildid, messageid string) map[string]Message {
+	var messages map[string]Message
+	var guild Guild
+
+	err = db.One("ID", guildid, &guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[message] %s\n", err)
+	}
+
+	messages = guild.Data.DataMessages
+
+	return messages
+}
+
+func GetMessage(guildid, messageid string) Message {
+	var message Message
+	var guild Guild
+
+	err = db.One("ID", guildid, &guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[message] %s\n", err)
+	}
+
+	message = guild.Data.DataMessages[messageid]
+
+	return message
+}
+
+func AddMessage(m *discordgo.MessageCreate) error {
+	// Get mention IDs
+	var mentionIDs []string
+	if len(m.Mentions) > 0 {
+		for _, v := range m.Mentions {
+			mentionIDs = append(mentionIDs, v.ID)
+		}
+	} else {
+		mentionIDs = nil
+	}
+
+	// Sort attachment data
+	var Attachments []MessageAttachment
+	if len(m.Attachments) > 0 {
+		for _, v := range m.Attachments {
+			Attachments = append(Attachments,
+				MessageAttachment{
+					v.ID,
+					v.URL,
+					v.ProxyURL,
+					v.Filename,
+				})
+		}
+	} else {
+		Attachments = nil
+	}
+
+	message := Message{
+		time.Now(),
+		m.ID,
+		m.ChannelID,
+		m.GuildID,
+		m.MentionRoles,
+		m.Tts,
+		m.MentionEveryone,
+		m.Author.ID,
+		Attachments,
+		mentionIDs,
+		m.Type,
+		m.WebhookID,
+	}
+
+	var guild Guild
+	err = db.One("ID", m.GuildID, &guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[AddMessage] %s\n", err)
+	}
+
+	if _, ok := guild.Data.Members[m.Author.ID]; !ok {
+		return fmt.Errorf("[AddMessage] %s\n", "User not in database.")
+	}
+
+	guild.Data.DataMessages[m.ID] = message
+	guild.Data.Members[m.Author.ID] = Member{
+		guild.Data.Members[m.Author.ID].GuildID,
+		guild.Data.Members[m.Author.ID].JoinedAt,
+		guild.Data.Members[m.Author.ID].Nick,
+		guild.Data.Members[m.Author.ID].User,
+		guild.Data.Members[m.Author.ID].Roles,
+		guild.Data.Members[m.Author.ID].MessagesSent + 1,
+		guild.Data.Members[m.Author.ID].AttachmentsSent,
+		guild.Data.Members[m.Author.ID].LinksSent,
+	}
+
+	if len(message.Attachments) > 0 {
+		guild.Data.Members[m.Author.ID] = Member{
+			guild.Data.Members[m.Author.ID].GuildID,
+			guild.Data.Members[m.Author.ID].JoinedAt,
+			guild.Data.Members[m.Author.ID].Nick,
+			guild.Data.Members[m.Author.ID].User,
+			guild.Data.Members[m.Author.ID].Roles,
+			guild.Data.Members[m.Author.ID].MessagesSent,
+			guild.Data.Members[m.Author.ID].AttachmentsSent + len(message.Attachments),
+			guild.Data.Members[m.Author.ID].LinksSent,
+		}
+	}
+
+	if len(xurls.Relaxed().FindAllString(m.Content, -1)) > 0 {
+		guild.Data.Members[m.Author.ID] = Member{
+			guild.Data.Members[m.Author.ID].GuildID,
+			guild.Data.Members[m.Author.ID].JoinedAt,
+			guild.Data.Members[m.Author.ID].Nick,
+			guild.Data.Members[m.Author.ID].User,
+			guild.Data.Members[m.Author.ID].Roles,
+			guild.Data.Members[m.Author.ID].MessagesSent,
+			guild.Data.Members[m.Author.ID].AttachmentsSent,
+			guild.Data.Members[m.Author.ID].LinksSent + len(xurls.Relaxed().FindAllString(m.Content, -1)),
+		}
+	}
+
+	err := db.Save(&guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[AddMessage] %s\n", err)
+	}
+
+	return nil
+}
+
+func GetMembers(guildid string) map[string]Member {
+	var members map[string]Member
+	var guild Guild
+
+	err = db.One("ID", guildid, &guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[GetMembers] %s\n", err)
+	}
+
+	members = guild.Data.Members
+
+	return members
+}
+
+func GetMember(guildid, memberid string) Member {
+	var member Member
+	var guild Guild
+
+	err = db.One("ID", guildid, &guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[GetMember] %s\n", err)
+	}
+
+	member = guild.Data.Members[memberid]
+
+	return member
+}
+
+func AddMember(m *discordgo.Member) error {
+	var guild Guild
+
+	err = db.One("ID", m.GuildID, &guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[GetMembers] %s\n", err)
+	}
+
+	JoinedAt, _ := m.JoinedAt.Parse()
+	guild.Data.Members[m.User.ID] = Member{
+		m.GuildID, // The guild ID on which the member exists.
+		JoinedAt,  // The time at which the member joined the guild
+		m.Nick,    // The nickname of the member, if they have one.
+		&User{
+			m.User.ID,
+			m.User.Username,
+			m.User.Avatar,
+			m.User.Locale,
+			m.User.Discriminator,
+			m.User.Verified,
+			m.User.MFAEnabled,
+			m.User.Bot,
+		},
+		m.Roles, // A list of IDs of the roles which are possessed by the member.
+		0,
+		0,
+		0,
+	}
+
+	err = db.Save(&guild)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return nil
+}
+
+func RemoveMember(gid, mid string) error {
+	var guild Guild
+
+	err = db.One("ID", gid, &guild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[GetMembers] %s\n", err)
+	}
+
+	delete(guild.Data.Members, mid)
+
+	err = db.Save(&guild)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return nil
+}
+
+func CheckUpToDate(r *discordgo.Ready) error {
+	guilds := GetGuilds()
+	for _, guild := range r.Guilds {
+		if !containsGuild(guilds, guild) {
+			AddGuild(guild)
+		}
+	}
+	// Re-populate with new
+	for _, guild := range r.Guilds {
+		guildlocal := GetGuild(guild.ID)
+		members := guildlocal.Data.Members
+		for _, mem := range guild.Members {
+			if _, ok := members[mem.User.ID]; !ok {
+				AddMember(mem)
+			}
+		}
+	}
+	return nil
+}
+
+// Used to check if value is in array
+func containsGuild(arr []Guild, str *discordgo.Guild) bool {
+	for _, a := range arr {
+		if a.ID == str.ID {
+			return true
+		}
+	}
+	return false
+}
+func containsMember(arr []Member, str *discordgo.Member) bool {
+	for _, a := range arr {
+		if a.User.ID == str.User.ID {
+			return true
+		}
+	}
+	return false
 }

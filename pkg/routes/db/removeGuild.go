@@ -6,24 +6,27 @@ import (
 
 	dbh "github.com/BaileyJM02/Hue-API/pkg/databaseHandler"
 	rh "github.com/BaileyJM02/Hue-API/pkg/routeHandler"
+	"github.com/gorilla/mux"
 )
 
-func runGetGuilds(w http.ResponseWriter, r *http.Request) {
+func runRemoveGuild(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	dbh.RemoveGuild(params["id"])
 	json.NewEncoder(w).Encode(dbh.GetGuilds())
 }
 
 func init() {
-	getGuilds := rh.Route{
-		"getGuilds",
+	removeGuild := rh.Route{
+		"removeGuild",
 		"/db/people",
 		"Shhhh",
 		"Database",
-		"GET",
-		"/db/guilds",
+		"DELETE",
+		"/db/guild/{id}",
 		true,
 		true,
-		runGetGuilds,
+		runRemoveGuild,
 	}
 
-	rh.Register(getGuilds)
+	rh.Register(removeGuild)
 }

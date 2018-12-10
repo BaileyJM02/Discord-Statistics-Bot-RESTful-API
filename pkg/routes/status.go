@@ -12,7 +12,7 @@ func runStatus(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	status := rh.Route{
-		"e",
+		"status",
 		"/db/people",
 		"Shhhh",
 		"Database",
