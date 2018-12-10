@@ -63,16 +63,17 @@ type GuildData struct {
 	Members      map[string]Member  `storm:"inline"`
 }
 type GuildStats struct {
-	TotalMessages interface{} // Messages all time
-	MessagesTM    interface{} // Messages this month (last 30 days)
-	MessagesTD    interface{} // Messages this day (last 24h)
-	MessagesTH    interface{} // Messages this hour (last 60 minutes)
-	MessagesTm    interface{} // Messages this minute (last 60 seconds)
-	TotalMembers  int         // Members all time
-	MembersTM     interface{} // Members this month (last 30 days)
-	MembersTD     interface{} // Members this day (last 24h)
-	MembersTH     interface{} // Members this hour (last 60 minutes)
-	MembersTm     interface{} // Members this minute (last 60 seconds)
+	TotalMessages int // Messages all time
+	MessagesTM    int // Messages this month (last 30 days)
+	MessagesTD    int // Messages this day (last 24h)
+	MessagesTH    int // Messages this hour (last 60 minutes)
+	MessagesTm    int // Messages this minute (last 60 seconds)
+
+	TotalMembers int // Members all time
+	MembersTM    int // Members this month (last 30 days)
+	MembersTD    int // Members this day (last 24h)
+	MembersTH    int // Members this hour (last 60 minutes)
+	MembersTm    int // Members this minute (last 60 seconds)
 }
 type Guild struct {
 	ID    string     `storm:"unique"` // Guild ID
@@ -147,101 +148,17 @@ func AddGuild(g *discordgo.Guild) error {
 	}
 
 	guildStats := GuildStats{
-		func(g *Guild) int { // Messages all time
-			var total int
-			total = len(g.Data.DataMessages)
-			return total
-		},
-		func(g *Guild) int { // Messages this month (last 30 days)
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.DataMessages {
-				cutoff := v.CreatedTime.Add(time.Duration(720 * time.Hour))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
-		func(g *Guild) int { // Messages this day (last 24 hours)
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.DataMessages {
-				cutoff := v.CreatedTime.Add(time.Duration(24 * time.Hour))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
-		func(g *Guild) int { // Messages this hour
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.DataMessages {
-				cutoff := v.CreatedTime.Add(time.Duration(1 * time.Hour))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
-		func(g *Guild) int { // Messages this minute
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.DataMessages {
-				cutoff := v.CreatedTime.Add(time.Duration(1 * time.Minute))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
+		0, // Messages all time
+		0, // Messages this day (last 24h)
+		0, // Messages this month (last 30 days)
+		0, // Messages this hour (last 60 minutes)
+		0, // Messages this minute (last 60 seconds)
 
 		g.MemberCount, // Members all time
-		func(g *Guild) int { // Members this month (last 30 days)
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.Members {
-				cutoff := v.JoinedAt.Add(time.Duration(720 * time.Hour))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
-		func(g *Guild) int { // Members this day (last 24 hours)
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.Members {
-				cutoff := v.JoinedAt.Add(time.Duration(24 * time.Hour))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
-		func(g *Guild) int { // Members this hour
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.Members {
-				cutoff := v.JoinedAt.Add(time.Duration(1 * time.Hour))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
-		func(g *Guild) int { // Members this minute
-			var total int
-			now := time.Now()
-			for _, v := range g.Data.Members {
-				cutoff := v.JoinedAt.Add(time.Duration(1 * time.Minute))
-				if now.Before(cutoff) {
-					total++
-				}
-			}
-			return total
-		},
+		0,             // Members this day (last 24h)
+		0,             // Members this month (last 30 days)
+		0,             // Members this hour (last 60 minutes)
+		0,             // Members this minute (last 60 seconds)
 	}
 
 	guild := Guild{
