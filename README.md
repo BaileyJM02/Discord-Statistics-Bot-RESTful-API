@@ -1,4 +1,4 @@
-<h1 align="center">Discord Statistics Bot API</h1><br>
+<h1 align="center">Discord Statistics Bot RESTful API</h1><br>
 <p align="center">
   <a href="https://open-source.hue.observer/pre-micro/api">
     <img alt="Hue" title="Hue" src="https://i.imgur.com/ZEdQ3nF.png" width="550">
