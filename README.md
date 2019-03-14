@@ -56,7 +56,7 @@ If there's anything you'd like to chat about, please feel free to join our [Disc
 
 - Follow the [Golang install guide](https://golang.org/doc/install) for getting started building a project with native code.
 - Clone or download the repo
-- `go get github.com/BaileyJM02/Discord-Statistics-Bot` to install dependencies
+- `go get github.com/BaileyJM02/Discord-Statistics-Bot-RESTful-API` to install dependencies
 - `go run main.go` to start the bot without building
 - `go build main.go` to build the bot into a native build file
 - `./<built file>` to run the bot using the native build file
