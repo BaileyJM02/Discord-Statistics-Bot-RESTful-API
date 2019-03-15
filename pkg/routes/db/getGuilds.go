@@ -5,11 +5,16 @@ import (
 	"net/http"
 
 	dbh "github.com/BaileyJM02/Hue-API/pkg/databaseHandler"
+	"github.com/BaileyJM02/Hue-API/pkg/logger"
 	rh "github.com/BaileyJM02/Hue-API/pkg/routeHandler"
 )
 
 func runGetGuilds(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(dbh.GetGuilds())
+	guilddbh, err := dbh.GetGuilds()
+	if err != nil {
+		logger.Error(err)
+	}
+	json.NewEncoder(w).Encode(guilddbh)
 }
 
 func init() {

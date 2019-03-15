@@ -10,28 +10,27 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func runRemoveGuild(w http.ResponseWriter, r *http.Request) {
+func runGetMembersTH(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	dbh.RemoveGuild(params["id"])
-	guildsdbh, err := dbh.GetGuilds()
+	membersdbh, err := dbh.GetMembersTH(params["id"])
 	if err != nil {
 		logger.Error(err)
 	}
-	json.NewEncoder(w).Encode(guildsdbh)
+	json.NewEncoder(w).Encode(membersdbh)
 }
 
 func init() {
-	removeGuild := rh.Route{
-		"removeGuild",
+	getMembersTH := rh.Route{
+		"getMembersTH",
 		"/db/people",
 		"Shhhh",
 		"Database",
-		"DELETE",
-		"/db/guild/{id}",
+		"GET",
+		"/db/guild/{id}/members/thishour",
 		true,
 		true,
-		runRemoveGuild,
+		runGetMembersTH,
 	}
 
-	rh.Register(removeGuild)
+	rh.Register(getMembersTH)
 }

@@ -2,8 +2,8 @@ package configHandler
 
 import (
 	"flag"
-	"fmt"
 
+	"github.com/BaileyJM02/Hue-API/pkg/logger"
 	"github.com/tkanos/gonfig"
 )
 
@@ -44,6 +44,6 @@ func init() {
 	path := getPath(enviroment)
 	err := gonfig.GetConf(path, &Config)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 	}
 }

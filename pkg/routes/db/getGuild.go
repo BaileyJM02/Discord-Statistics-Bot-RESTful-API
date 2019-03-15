@@ -11,7 +11,8 @@ import (
 
 func runGetGuild(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	json.NewEncoder(w).Encode(dbh.GetGuild(params["id"]))
+	guilddbh, _ := dbh.GetGuild(params["id"])
+	json.NewEncoder(w).Encode(guilddbh)
 }
 
 func init() {

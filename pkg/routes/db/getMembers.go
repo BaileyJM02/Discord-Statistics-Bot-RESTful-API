@@ -5,13 +5,18 @@ import (
 	"net/http"
 
 	dbh "github.com/BaileyJM02/Hue-API/pkg/databaseHandler"
+	"github.com/BaileyJM02/Hue-API/pkg/logger"
 	rh "github.com/BaileyJM02/Hue-API/pkg/routeHandler"
 	"github.com/gorilla/mux"
 )
 
 func runGetMembers(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	json.NewEncoder(w).Encode(dbh.GetMembers(params["id"]))
+	membersdbh, err := dbh.GetMembers(params["id"])
+	if err != nil {
+		logger.Error(err)
+	}
+	json.NewEncoder(w).Encode(membersdbh)
 }
 
 func init() {

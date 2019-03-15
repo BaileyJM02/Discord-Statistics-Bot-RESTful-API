@@ -14,8 +14,11 @@ func runCreateGuild(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	var guild *discordgo.Guild
 	_ = json.NewDecoder(r.Body).Decode(&guild)
-	dbh.AddGuild(guild)
-	json.NewEncoder(w).Encode(dbh.GetGuild(params["id"]))
+	guild2, _ := dbh.AddGuild(guild)
+
+	guild2, _ = dbh.GetGuild(params["id"])
+
+	json.NewEncoder(w).Encode(guild2)
 }
 
 func init() {
